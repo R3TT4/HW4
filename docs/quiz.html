@@ -1,0 +1,521 @@
+<!-- 
+Name: Everett Johnson
+Class: CPSC 332
+Assignment: Homework 4
+Last Modified: 10/20/2022
+ -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Quiz App</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            font-family: Gotham Rounded;
+        }
+
+        :root {
+            --hue-neutral: 200;
+            --hue-wrong: 0;
+            --hue-correct: 145;
+        }
+
+        body {
+            --hue: var(--hue-neutral);
+            padding: 0;
+            margin: 0;
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: hsl(var(--hue), 100%, 20%);
+            background-image: url(luka.png);
+            background-repeat: no-repeat;
+            background-position: center bottom;
+            background-size: auto 40%;
+        }
+
+        body.correct {
+            --hue: var(--hue-correct);
+            background-image: url(luka-happy.jpg);
+            background-repeat: repeat-x;
+            background-position: center bottom;
+            background-size: auto 30%;
+        }
+
+        body.wrong {
+            --hue: var(--hue-wrong);
+            background-image: url(luka-mad.png);
+            background-repeat: repeat-x;
+            background-position: center bottom;
+            background-size: auto 30%;
+        }
+
+        .container {
+            width: 800px;
+            max-width: 80%;
+            background-color: white;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 0 10px 2px;
+        }
+
+        .options-container {
+            border: 3px dashed lightblue;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 15px;
+            background-color: beige;
+        }
+
+        .timer-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .timer-container span {
+            font-size: x-large;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, auto);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .btn {
+            --hue: var(--hue-neutral);
+            border: 1px solid hsl(var(--hue), 100%, 30%);
+            background-color: hsl(var(--hue), 100%, 50%);
+            border-radius: 5px;
+            padding: 5px 10px;
+            color: white;
+            outline: none;
+        }
+
+        .btn:hover {
+            border-color: black;
+        }
+
+        .btn.correct {
+            --hue: var(--hue-correct);
+            color: black;
+        }
+
+        .btn.wrong {
+            --hue: var(--hue-wrong);
+        }
+
+        .start-btn,
+        .next-btn,
+        .back-btn {
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 10px 20px;
+
+        }
+
+        .next-btn,
+        .back-btn {
+            margin: 2px;
+
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hide {
+            display: none;
+        }
+
+        legend {
+            margin: 2px;
+        }
+
+        .option-item {
+            margin-left: 20px;
+            margin-right: 20px;
+        }
+    </style>
+    <script>
+
+        // Add an event listener for the DOMContentLoaded event
+        window.addEventListener("DOMContentLoaded", domLoaded);
+
+        function domLoaded() {
+            const startButton = document.getElementById('start-btn')
+            const nextButton = document.getElementById('next-btn')
+            const backButton = document.getElementById('back-btn')
+            const optionsContainer = document.getElementById('options-container')
+            const questionContainerElement = document.getElementById('question-container')
+            const questionElement = document.getElementById('question')
+            const answerButtonsElement = document.getElementById('answer-buttons')
+            const shuffleBox = document.getElementById('shuffle-box')
+            const timedBox = document.getElementById('timed-box')
+            const removeBox = document.getElementById('remove-box')
+            const timerContainer = document.getElementById('timer-container')
+
+            let shuffledQuestions, currentQuestionIndex
+            let correctAnswers = []
+            let totalPasses = 0
+            let shuffle = true
+            let timed = false
+            let remove = false
+            var timer = null
+            let totMin = 0
+            let totSec = 0
+
+            //using the domLoaded function because the buttons need to be rendered before we can
+            //add an event listener
+
+            startButton.addEventListener('click', startGame)
+            nextButton.addEventListener('click', () => {
+                currentQuestionIndex++
+                setNextQuestion()
+            })
+
+            backButton.addEventListener('click', goBack)
+
+            shuffleBox.addEventListener('change', () => {
+                if (shuffleBox.checked) {
+                    shuffle = true;
+                } else {
+                    shuffle = false;
+                }
+            })
+
+            timedBox.addEventListener('change', () => {
+                if (timedBox.checked) {
+                    timed = true;
+                } else {
+                    timed = false;
+                }
+            })
+
+            removeBox.addEventListener('change', () => {
+                if (removeBox.checked) {
+                    remove = true;
+                } else {
+                    remove = false;
+                }
+            })
+
+            function startTimer() {
+                timer = setInterval(updateTimer, 1000);
+            }
+
+            function updateTimer() {
+                totSec++;
+                if (totSec == 60) {
+                    totMin++;
+                    totSec = 0;
+                }
+                let min = document.getElementById("min")
+                let sec = document.getElementById("sec")
+                if (totMin < 10) {
+                    min.innerText = "0" + totMin + "m";
+                } else {
+                    min.innerText = totMin + "m";
+                }
+
+                if (totSec < 10) {
+                    sec.innerText = "0" + totSec + "s";
+                } else {
+                    sec.innerText = totSec + "s";
+                }
+
+                if (totSec == 30 || totSec == 32 || ((totSec == 0 || totSec == 2) && totMin > 0)) {
+                    min.style.backgroundColor = "red";
+                    sec.style.backgroundColor = "red";
+                } else {
+                    min.style.backgroundColor = "white";
+                    sec.style.backgroundColor = "white";
+                }
+            }
+
+
+            // Simple function to go back to previous card
+            function goBack() {
+                currentQuestionIndex--
+                startButton.classList.add('hide')
+                setNextQuestion()
+            }
+
+            function startGame() {
+                if (totalPasses == 0) {
+                    startButton.classList.add('hide')
+                    optionsContainer.classList.add('hide')
+                    if (timed) {
+                        timerContainer.classList.remove('hide')
+                        startTimer()
+                    }
+                    if (shuffle) {
+                        shuffledQuestions = questions.sort(() => Math.random() - .5)
+                    } else {
+                        shuffledQuestions = questions
+                    }
+                    currentQuestionIndex = 0
+                    questionContainerElement.classList.remove('hide')
+                    totalPasses++
+                    setNextQuestion()
+                }
+                else {
+                    if (shuffledQuestions.length <= 0) {
+                        shuffledQuestions = correctAnswers
+                    }
+                    startButton.classList.add('hide')
+                    currentQuestionIndex = 0
+                    setNextQuestion()
+                }
+            }
+
+            function setNextQuestion() {
+                resetState()
+                showQuestion(shuffledQuestions[currentQuestionIndex])
+            }
+
+            function showQuestion(question) {
+                questionElement.innerText = question.question
+                question.answers.forEach(answer => {
+                    const button = document.createElement('button')
+                    button.innerText = answer.text
+                    button.classList.add('btn')
+                    if (answer.correct) {
+                        button.dataset.correct = answer.correct
+                    }
+                    button.addEventListener('click', selectAnswer)
+                    answerButtonsElement.appendChild(button)
+                })
+
+            }
+
+            function resetState() {
+                clearStatusClass(document.body)
+                nextButton.classList.add('hide')
+                backButton.classList.add('hide')
+                while (answerButtonsElement.firstChild) {
+                    answerButtonsElement.removeChild(answerButtonsElement.firstChild)
+                }
+            }
+
+            function selectAnswer(e) {
+                const selectedButton = e.target
+                const correct = selectedButton.dataset.correct
+                setStatusClass(document.body, correct)
+                Array.from(answerButtonsElement.children).forEach(button => {
+                    setStatusClass(button, button.dataset.correct)
+                })
+                if (correct) {
+                    createInfo()
+                    if (remove) {
+                        correctAnswers.push(shuffledQuestions[currentQuestionIndex])
+                        shuffledQuestions.splice(currentQuestionIndex, 1)
+                        currentQuestionIndex--
+                    }
+                }
+
+                if (0 < currentQuestionIndex) { //&& shuffledQuestions.length > currentQuestionIndex + 1
+                    backButton.classList.remove('hide')
+                }
+
+                if (shuffledQuestions.length > currentQuestionIndex + 1) {
+                    nextButton.classList.remove('hide')
+                } else {
+                    startButton.innerText = 'Restart'
+                    startButton.classList.remove('hide')
+                }
+            }
+
+            function setStatusClass(element, correct) {
+                clearStatusClass(element)
+                if (correct) {
+                    element.classList.add('correct')
+                } else {
+                    element.classList.add('wrong')
+                }
+            }
+
+            function createInfo() {
+                // Create info container
+                let infoContainer = document.createElement("div")
+                infoContainer.id = "info-container"
+                infoContainer.style = "border: 2px dotted green; padding: 20px; border-radius: 30px; margin: 15px; background-color: beige;";
+                document.getElementById("container").prepend(infoContainer)
+
+                // Add the info
+                let info = document.createElement("div")
+                info.innerText = shuffledQuestions[currentQuestionIndex].info
+                document.getElementById("info-container").appendChild(info)
+            }
+
+            function clearStatusClass(element) {
+                element.classList.remove('correct')
+                element.classList.remove('wrong')
+
+                if (document.getElementById("info-container") != null) {
+                    document.getElementById("info-container").remove();
+                }
+            }
+
+            const questions = [
+                {
+                    question: 'Where was Luka Doncic born?',
+                    answers: [
+                        { text: 'United States of America', correct: false },
+                        { text: 'Slovenia', correct: true },
+                        { text: 'Lithuania', correct: false },
+                        { text: 'Ukraine', correct: false },
+                    ],
+                    info: 'Ljubljana, Slovenia is Luka Doncic\'s hometown.'
+                },
+                {
+                    question: 'What year was Luka Doncic born?',
+                    answers: [
+                        { text: '1995', correct: false },
+                        { text: '1997', correct: false },
+                        { text: '1999', correct: true },
+                        { text: '2001', correct: false },
+
+                    ],
+                    info: 'Luka Doncic was born on February 28, 1999. He is currently 23 years old.'
+                },
+                {
+                    question: 'How many points per game (PPG) did Luka Doncic average in his rookie season?',
+                    answers: [
+                        { text: '18', correct: false },
+                        { text: '21', correct: true },
+                        { text: '25', correct: false },
+                        { text: '27', correct: false },
+                    ],
+                    info: 'Luka Doncic averaged 21 ppg during his rookie season. In every season since then, he has been able to average at least 27 ppg.'
+                },
+                {
+                    question: 'Which of the following is NOT a common nickname for Luka Doncic?',
+                    answers: [
+                        { text: 'Luka Magic', correct: false },
+                        { text: 'Luka Legend', correct: false },
+                        { text: 'The Don', correct: false },
+                        { text: 'Lu-Clutch-Or Don-Kick', correct: true },
+                    ],
+                    info: 'Another very popular NBA player with \'magic\' in their nickname is Magic Johnson. Some say that Luka Doncic and Magic Johnson are similar since they are both taller guards with elite passing abilities.'
+                },
+                {
+                    question: 'Which number does Luka Doncic wear?',
+                    answers: [
+                        { text: '77', correct: true },
+                        { text: '23', correct: false },
+                        { text: '7', correct: false },
+                        { text: '30', correct: false },
+                    ],
+                    info: 'Luka Doncic\'s favorite basketball player Vassilis Spanoulis wore number 7. Luka would then wear number 7 at Real Madrid in honor of Spanoulis. When Luka came to the NBA, 7 was already taken so he went with 77 instead.'
+                },
+                {
+                    question: 'Which position does Luka Doncic play?',
+                    answers: [
+                        { text: 'Point Guard', correct: true },
+                        { text: 'Power Forward', correct: false },
+                        { text: 'Small Forward', correct: false },
+                        { text: 'Center', correct: false },
+                    ],
+                    info: 'Despite the fact that the average Point Guard only stands around 6\'2\", Luka Doncic is one of the best Point Guards in the world at 6\'7\".'
+                },
+                {
+                    question: 'Which team does Luka Doncic currently play for?',
+                    answers: [
+                        { text: 'Atlanta Hawks', correct: false },
+                        { text: 'Dallas Mavericks', correct: true },
+                        { text: 'Los Angles Lakers', correct: false },
+                        { text: 'Houston Rockets', correct: false },
+                    ],
+                    info: "Luka Doncic was traded to the Dallas Mavericks immediately after being drafted third in 2018."
+                },
+                {
+                    question: 'Which team was Luka Doncic drafted by?',
+                    answers: [
+                        { text: 'Atlanta Hawks', correct: true },
+                        { text: 'Dallas Mavericks', correct: false },
+                        { text: 'Los Angles Clippers', correct: false },
+                        { text: 'Houston Rockets', correct: false },
+                    ],
+                    info: "Luka Doncic was originally drafted by the Atlanta Hawks in 2018, but was then traded to his current team for Trae Young."
+                },
+                {
+                    question: 'What is Luka Doncic\'s current (October 2022) career high in points?',
+                    answers: [
+                        { text: '39', correct: false },
+                        { text: '42', correct: false },
+                        { text: '46', correct: false },
+                        { text: '51', correct: true },
+                    ],
+                    info: "Luka Doncic recorded a career-high 51 PTS, along with 9 REB and 6 AST for the Mavericks as they defeated the Clippers, 112-105. -NBA"
+                },
+                {
+                    question: 'Is Luka Doncic\'s career Effective Field Goal percentage (EFG%) Over or Under 50%?',
+                    answers: [
+                        { text: 'Over', correct: true },
+                        { text: 'Under', correct: false },
+                    ],
+                    info: "Luka Doncic has an EFG% of 52.7% with a 33.6% career 3 point percentage."
+                },
+
+            ]
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container" id="container">
+        <fieldset class="options-container" id="options-container">
+            <legend>Options</legend>
+            <span class="option-item">
+                <label for="shuffle-box">Shuffle Cards:</label>
+                <input type="checkbox" id="shuffle-box" checked>
+            </span>
+            <span class="option-item">
+                <label for="timed-box">Timed session:</label>
+                <input type="checkbox" id="timed-box">
+            </span>
+            <span class="option-item">
+                <label for="remove-box">Remove Correct from Deck:</label>
+                <input type="checkbox" id="remove-box">
+            </span>
+        </fieldset>
+        <div id="question-container" class="hide">
+            <div id="question">Question</div>
+            <div id="answer-buttons" class="btn-grid">
+                <button class="btn">Answer 1</button>
+                <button class="btn">Answer 2</button>
+                <button class="btn">Answer 3</button>
+                <button class="btn">Answer 4</button>
+            </div>
+        </div>
+        <div class="timer-container" id="timer-container" class="hide">
+            <span id="min"></span>
+            <span id="sec"></span>
+        </div>
+        <div class="controls">
+            <button id="back-btn" class="back-btn btn hide">Back</button>
+            <button id="next-btn" class="next-btn btn hide">Next</button>
+            <button id="start-btn" class="start-btn btn">Start</button>
+        </div>
+    </div>
+</body>
+
+
+
+</html>
